@@ -1,6 +1,6 @@
-drift:
-  enabled: true
-  schedules:
-    default:
-      tag_query: ''
-      schedule: hourly
+# drift:
+#   enabled: true
+#   schedules:
+#     default:
+#       tag_query: ''
+#       schedule: hourly
