@@ -3,4 +3,4 @@ drift:
   schedules:
     default:
       tag_query: ''
-      schedule: daily
+      schedule: hourly
