@@ -1,6 +1,106 @@
-# drift:
-#   enabled: true
-#   schedules:
-#     default:
-#       tag_query: ''
-#       schedule: hourly
+##########################################################################
+# Terrateam configuration - evaluation setup for the two-layer demo.
+#
+#   infra/network  produces dummy resources and exports outputs
+#   infra/app      reads those outputs and builds on top of them
+#
+# infra/app depends_on infra/network, so a PR touching both gets network
+# planned and applied first, and app only runs once network applied cleanly.
+#
+# See infra/README.md for what to change to exercise each behaviour.
+##########################################################################
+
+# Global default. modules/ is shared, so a change in there has to trigger the
+# directories that consume it - otherwise a module edit plans nothing.
+when_modified:
+  file_patterns:
+    - '${DIR}/*.tf'
+    - '${DIR}/*.tfvars'
+    - 'modules/**/*.tf'
+  autoplan: true
+  autoplan_draft_pr: true
+  autoapply: false
+
+dirs:
+  infra/network:
+    tags: [layer-network, demo]
+
+  infra/app:
+    tags: [layer-app, demo]
+    when_modified:
+      # Layered runs: network is planned and applied before app.
+      depends_on: 'dir:infra/network'
+      file_patterns:
+        - '${DIR}/*.tf'
+        - '${DIR}/*.tfvars'
+        - 'modules/**/*.tf'
+        # app reads network's committed state, so a new network state is an
+        # app-relevant change too.
+        - 'infra/network/terraform.tfstate'
+
+  # The original single-directory demo, left in place so the README quick start
+  # still works.
+  dev:
+    tags: [legacy-demo]
+
+hooks:
+  all:
+    pre:
+      - type: env
+        name: TF_IN_AUTOMATION
+        cmd: ['echo', 'true']
+
+  plan:
+    pre:
+      # Formatting check that reports but does not block, so you can see how a
+      # failing hook surfaces in the PR comment.
+      - type: run
+        cmd: ['terraform', 'fmt', '-check', '-recursive', '-diff']
+        ignore_errors: true
+        visible_on: failure
+
+    post:
+      # Opens a GitHub issue when a scheduled drift run finds changes.
+      - type: drift_create_issue
+        group_by: dirspace
+
+apply_requirements:
+  create_pending_apply_check: true
+  checks:
+    - tag_query: ''
+      merge_conflicts:
+        enabled: true
+      status_checks:
+        enabled: true
+      require_ready_for_review_pr: true
+      apply_after_merge:
+        enabled: false
+      # Set enabled: true to require a review before `terrateam apply` is
+      # allowed. Off by default because GitHub will not let you approve your
+      # own pull request, which would block every apply in a solo fork.
+      approved:
+        enabled: false
+
+drift:
+  enabled: true
+  schedules:
+    daily:
+      tag_query: 'demo'
+      schedule: daily
+      reconcile: false
+
+# Custom per-tag workflows - left commented out because it replaces the default
+# plan/apply steps, and a typo here breaks every run. Uncomment once the rest of
+# the setup is behaving and you want to test extra steps such as validate,
+# tflint or checkov.
+#
+# workflows:
+#   - tag_query: 'layer-network'
+#     plan:
+#       - type: init
+#       - type: run
+#         cmd: ['terraform', 'validate']
+#       - type: plan
+#     apply:
+#       - type: init
+#       - type: apply

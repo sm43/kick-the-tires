@@ -5,6 +5,13 @@
 *.tfstate
 *.tfstate.*
 
+# Committed on purpose: with no cloud backend available, this is how infra/app
+# reads infra/network's outputs via terraform_remote_state. See infra/README.md.
+!infra/network/terraform.tfstate
+
+# Rendered by infra/app at plan/apply time.
+infra/*/generated/
+
 # Crash log files
 crash.log
 crash.*.log
