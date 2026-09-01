@@ -29,7 +29,7 @@ layer's plan:
   }
 ```
 
-## Two things that will bite you
+## Three things that will bite you
 
 **Config is read from the base branch, not the PR branch.** Terrateam loads
 `.terrateam/config.yml` from the pull request's *destination* branch. A config
@@ -37,6 +37,16 @@ change cannot be tested in the pull request that introduces it — it only takes
 effect once merged. A config that fails to parse (for example a file where
 every line is commented out, which YAML reads as `null`) blocks every operation
 with `null is not of type "object"` and no plan runs at all.
+
+**Absolute file patterns in the global `when_modified` fan out to everything.**
+Directory discovery is automatic: Terrateam treats any directory containing
+changed files as a candidate dirspace. A pattern like `modules/**/*.tf` in the
+*global* `when_modified` is evaluated against every one of them, so a single
+module change tries to plan the whole repository and fails with
+`No configuration files` in every directory that has no Terraform. Keep global
+patterns `${DIR}`-relative, put absolute patterns under a specific directory,
+let the `indexer` handle module-to-consumer replanning, and silence
+non-Terraform directories with `file_patterns: []`.
 
 **State is committed on purpose.** Terrateam never stores Terraform state — it
 stays in whatever backend you choose. With no cloud backend yet,
@@ -109,7 +119,7 @@ finds genuine drift. To force a drift signal, hand-edit a `hex` value inside
 | **Layered ordering** | Edit both `infra/network/main.tf` and `infra/app/main.tf` in one PR. Network plans and applies first; app follows. |
 | **Independent dirspaces** | Change only `instances_per_subnet` in `infra/app/main.tf`. Only the app layer plans. |
 | **Output propagation** | Change `subnet_count` in `infra/network/main.tf`, apply, refresh the state snapshot. The new subnet count reaches app on the next run. |
-| **Shared module fan-out** | Edit `modules/main.tf`. The `modules/**/*.tf` file pattern makes every consuming directory plan. |
+| **Shared module fan-out** | Edit `modules/main.tf`. The indexer replans every directory that references the module, and does not plan `modules/` itself. |
 | **Sensitive value handling** | `internal_endpoint` is marked `sensitive`. Check how it renders in the PR comment. |
 | **Failing pre-hook** | Break the formatting in any `.tf` file. The `terraform fmt -check` pre-plan hook reports it without blocking (`ignore_errors: true`). |
 | **Apply requirements** | Set `approved.enabled: true` in the config. Note GitHub will not let you approve your own PR, so this blocks applies in a solo fork. |
