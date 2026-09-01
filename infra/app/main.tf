@@ -6,10 +6,6 @@ terraform {
   }
 
   required_providers {
-    null = {
-      source  = "hashicorp/null"
-      version = "~> 3.2"
-    }
     local = {
       source  = "hashicorp/local"
       version = "~> 2.5"
@@ -40,20 +36,18 @@ locals {
 variable "instances_per_subnet" {
   description = "Bump this to see an app-only plan that leaves the network layer untouched."
   type        = number
-  default     = 1
+  default     = 2
 }
 
-resource "null_resource" "instance" {
+# Built from the shared module so a change in modules/ replans this directory.
+module "instance" {
+  source = "../../modules"
+
   count = local.instance_count
 
-  triggers = {
-    vpc_id    = local.vpc_id
-    subnet_id = local.subnet_ids[count.index % length(local.subnet_ids)]
-  }
-
-  provisioner "local-exec" {
-    command = "echo 'app instance ${count.index} -> ${local.subnet_ids[count.index % length(local.subnet_ids)]} in ${local.vpc_id}'"
-  }
+  name      = "app-${count.index}"
+  vpc_id    = local.vpc_id
+  subnet_id = local.subnet_ids[count.index % length(local.subnet_ids)]
 }
 
 # Rendered on every run so the plan diff spells out the values that crossed over

@@ -36,7 +36,7 @@ variable "cidr_block" {
 variable "subnet_count" {
   description = "How many fake subnets to hand to the app layer."
   type        = number
-  default     = 2
+  default     = 3
 }
 
 # Stands in for a VPC. random_id behaves like a cloud-assigned identifier for
