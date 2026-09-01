@@ -32,15 +32,22 @@ variable "subnet_id" {
   type        = string
 }
 
+variable "tier" {
+  description = "Instance tier. Defaulted so consumers do not have to change to pick it up."
+  type        = string
+  default     = "standard"
+}
+
 resource "null_resource" "this" {
   triggers = {
     name      = var.name
     vpc_id    = var.vpc_id
     subnet_id = var.subnet_id
+    tier      = var.tier
   }
 
   provisioner "local-exec" {
-    command = "echo 'instance ${var.name} -> ${var.subnet_id} in ${var.vpc_id}'"
+    command = "echo 'instance ${var.name} (${var.tier}) -> ${var.subnet_id} in ${var.vpc_id}'"
   }
 }
 
@@ -52,4 +59,9 @@ output "id" {
 output "name" {
   description = "Instance name."
   value       = var.name
+}
+
+output "tier" {
+  description = "Instance tier."
+  value       = var.tier
 }
