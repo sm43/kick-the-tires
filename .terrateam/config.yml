@@ -115,7 +115,7 @@ drift:
   schedules:
     hourly:
       tag_query: 'demo'
-      schedule: hourly
+      schedule: daily
       reconcile: false
 
 # Custom per-tag workflows - left commented out because it replaces the default
