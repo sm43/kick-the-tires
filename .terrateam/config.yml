@@ -7,19 +7,27 @@
 # infra/app depends_on infra/network, so a PR touching both gets network
 # planned and applied first, and app only runs once network applied cleanly.
 #
-# See infra/README.md for what to change to exercise each behaviour.
+# See README.md for what to change to exercise each behaviour.
 ##########################################################################
 
-# Global default. modules/ is shared, so a change in there has to trigger the
-# directories that consume it - otherwise a module edit plans nothing.
+# Keep every pattern here ${DIR}-relative. An absolute pattern in the global
+# when_modified (for example 'modules/**/*.tf') is evaluated against every
+# directory Terrateam discovers, so a single module change fans a plan out to
+# the whole repository - including directories with no Terraform in them.
+# Module-to-consumer relationships belong to the indexer instead.
 when_modified:
   file_patterns:
     - '${DIR}/*.tf'
     - '${DIR}/*.tfvars'
-    - 'modules/**/*.tf'
   autoplan: true
   autoplan_draft_pr: true
   autoapply: false
+
+# Works out which directories reference which modules, so a change in modules/
+# replans its consumers and the module directory itself is never planned.
+# `terrateam repo-config` shows the configuration this generates.
+indexer:
+  enabled: true
 
 dirs:
   infra/network:
@@ -33,15 +41,28 @@ dirs:
       file_patterns:
         - '${DIR}/*.tf'
         - '${DIR}/*.tfvars'
-        - 'modules/**/*.tf'
         # app reads network's committed state, so a new network state is an
-        # app-relevant change too.
+        # app-relevant change too. Scoped to this directory, so it does not
+        # fan out the way a global absolute pattern would.
         - 'infra/network/terraform.tfstate'
 
-  # The original single-directory demo, left in place so the README quick start
-  # still works.
-  dev:
-    tags: [legacy-demo]
+  # Directory discovery is automatic and picks up anything containing changed
+  # files, so the non-Terraform directories have to be silenced explicitly or
+  # they fail with "No configuration files".
+  '.':
+    when_modified:
+      file_patterns: []
+  '.github/**':
+    when_modified:
+      file_patterns: []
+  '.terrateam':
+    when_modified:
+      file_patterns: []
+  # Module source, not a root module. The indexer knows this too; being
+  # explicit means it still holds if the indexer is turned off.
+  modules:
+    when_modified:
+      file_patterns: []
 
 hooks:
   all:
@@ -81,12 +102,20 @@ apply_requirements:
       approved:
         enabled: false
 
+# Drift detection is how you get a plan run against main: it plans every
+# matching dirspace on the default branch on a schedule and opens a GitHub
+# issue if anything differs. Hourly while we are evaluating; drop to daily
+# once the novelty wears off.
+#
+# reconcile: false means report only. Setting it true makes Terrateam apply
+# the drift plan automatically, with no review - leave it off until you trust
+# what drift is reporting.
 drift:
   enabled: true
   schedules:
-    daily:
+    hourly:
       tag_query: 'demo'
-      schedule: daily
+      schedule: hourly
       reconcile: false
 
 # Custom per-tag workflows - left commented out because it replaces the default
