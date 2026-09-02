@@ -96,11 +96,15 @@ apply_requirements:
       require_ready_for_review_pr: true
       apply_after_merge:
         enabled: false
-      # Set enabled: true to require a review before `terrateam apply` is
-      # allowed. Off by default because GitHub will not let you approve your
-      # own pull request, which would block every apply in a solo fork.
+      # Only sm43 can satisfy this. GitHub blocks self-review-approval, so
+      # this also means sm43's own PRs can never be applied by sm43 alone -
+      # a PR from anyone else needs sm43's approval; a PR authored by sm43
+      # needs a second approver, which today means none of sm43's own PRs
+      # can be applied until someone else reviews them.
       approved:
-        enabled: false
+        enabled: true
+        any_of: ['user:sm43']
+        any_of_count: 1
 
 # Drift detection is how you get a plan run against main: it plans every
 # matching dirspace on the default branch on a schedule and opens a GitHub
