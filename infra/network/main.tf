@@ -5,9 +5,9 @@ terraform {
   # that is how the app layer reads these outputs while the demo has no cloud
   # credentials. Replace this block with an S3/GCS/AzureRM backend once you
   # have them - the resources and outputs below do not change.
-  backend "local" {
-    path = "terraform.tfstate"
-  }
+  # backend "local" {
+  #   path = "terraform.tfstate"
+  # }
 
   required_providers {
     random = {
