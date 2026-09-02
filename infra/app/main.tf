@@ -36,7 +36,7 @@ locals {
 variable "instances_per_subnet" {
   description = "Bump this to see an app-only plan that leaves the network layer untouched."
   type        = number
-  default     = 2
+  default     = 3
 }
 
 # Built from the shared module so a change in modules/ replans this directory.
